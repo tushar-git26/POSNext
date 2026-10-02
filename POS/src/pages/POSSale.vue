@@ -357,6 +357,7 @@
 							]"
 							style="min-width: 300px; contain: layout style paint"
 						>
+							<RfidTray v-if="rfidStore.enabled" />
 							<InvoiceCart
 								:items="cartStore.invoiceItems"
 								:customer="cartStore.customer"
@@ -1011,6 +1012,7 @@ import CreateCustomerDialog from "@/components/sale/CreateCustomerDialog.vue";
 import CustomerDialog from "@/components/sale/CustomerDialog.vue";
 import DraftInvoicesDialog from "@/components/sale/DraftInvoicesDialog.vue";
 import InvoiceCart from "@/components/sale/InvoiceCart.vue";
+import RfidTray from "@/components/sale/RfidTray.vue";
 import InvoiceHistoryDialog from "@/components/sale/InvoiceHistoryDialog.vue";
 import ItemSelectionDialog from "@/components/sale/ItemSelectionDialog.vue";
 import ItemsSelector from "@/components/sale/ItemsSelector.vue";
@@ -1054,6 +1056,7 @@ import { useStockStore } from "@/stores/stock";
 import { usePOSCartStore } from "@/stores/posCart";
 import { usePOSDraftsStore } from "@/stores/posDrafts";
 import { usePOSSettingsStore } from "@/stores/posSettings";
+import { usePosRfidStore } from "@/stores/posRfid";
 import { usePOSShiftStore } from "@/stores/posShift";
 import { usePOSSyncStore } from "@/stores/posSync";
 import { usePOSUIStore } from "@/stores/posUI";
@@ -1064,6 +1067,7 @@ import { shouldValidateItemStock } from "@/utils/stockValidator";
 // Initialize stores
 const cartStore = usePOSCartStore();
 const shiftStore = usePOSShiftStore();
+const rfidStore = usePosRfidStore();
 const uiStore = usePOSUIStore();
 const offlineStore = usePOSSyncStore();
 const draftsStore = usePOSDraftsStore();
@@ -1224,6 +1228,15 @@ const canSwitchToDesk = computed(() => Boolean(bootstrapStore.data?.can_switch_t
 // Resize state
 let resizeState = null;
 let bodyStyleSnapshot = null;
+
+// RFID counter mode follows the active POS Profile (no-op on non-RFID sites).
+watch(
+	() => shiftStore.profileName,
+	(name) => {
+		if (name) rfidStore.load(name);
+	},
+	{ immediate: true }
+);
 
 onMounted(async () => {
 	// Window resize listeners (passive for better performance)
@@ -1838,7 +1851,16 @@ async function handleShiftClosed() {
 	}
 }
 
+function rfidScanRequired(item) {
+	if (rfidStore.requireScan && item?.has_serial_no) {
+		showWarning(__("Place {0} on the RFID tray - tagged garments cannot be picked by hand", [item.item_name || item.item_code]));
+		return true;
+	}
+	return false;
+}
+
 function handleItemSelected(item, autoAdd = false) {
+	if (rfidScanRequired(item)) return;
 	// Auto-add mode
 	if (autoAdd) {
 		try {
@@ -1970,6 +1992,14 @@ function handleEditCustomer(customer) {
 function handleProceedToPayment() {
 	if (cartStore.isEmpty) {
 		showWarning(__("Please add items to cart before proceeding to payment"));
+		return;
+	}
+	if (rfidStore.enabled && offlineStore.isOffline) {
+		showWarning(__("RFID counter needs a connection to complete the sale"));
+		return;
+	}
+	if (rfidStore.blocked) {
+		showWarning(__("A set on the tray is incomplete. Read the missing pieces or remove it."));
 		return;
 	}
 
@@ -2201,6 +2231,7 @@ async function handlePaymentCompleted(paymentData) {
 				const paidAmount = paymentData.paid_amount || invoiceTotal;
 
 				uiStore.showPaymentDialog = false;
+				rfidStore.reset();
 				cartStore.clearCart();
 				// Reset cart hash after successful payment
 				previousCartHash = "";
@@ -2264,6 +2295,7 @@ function handleClearCart() {
 }
 
 function confirmClearCart() {
+	rfidStore.clearBasket();
 	cartStore.clearCart();
 	// Reset cart hash when cart is cleared
 	previousCartHash = "";
@@ -2504,6 +2536,10 @@ async function handleApplyOffer(offer) {
 }
 
 function handleBatchSerialSelected(batchSerial) {
+	if (cartStore.pendingItem && rfidScanRequired(cartStore.pendingItem)) {
+		cartStore.clearPendingItem();
+		return;
+	}
 	if (cartStore.pendingItem) {
 		// Use quantity from batchSerial if provided (for multiple serial numbers), otherwise use pendingItemQty
 		const qty = batchSerial.quantity || cartStore.pendingItemQty;

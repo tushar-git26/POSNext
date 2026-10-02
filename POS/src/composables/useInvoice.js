@@ -37,6 +37,9 @@ export function useInvoice() {
 
 	// Submission state - prevents duplicate submissions
 	const isSubmitting = ref(false);
+	// Extra header fields an optional module wants on the invoice (e.g. the RFID
+	// counter's basket). Merged into the payload; empty for a plain POS.
+	const invoiceExtras = ref({});
 
 	// Performance: Incrementally maintained aggregates (updated on add/remove/change)
 	// This avoids O(n) array reductions on every reactive change
@@ -1053,6 +1056,7 @@ export function useInvoice() {
 			coupon_code: couponCode.value,
 			is_pos: 1,
 			update_stock: 1,
+			...toRaw(invoiceExtras.value),
 		};
 
 		if (targetDoctype === "Sales Order") {
@@ -1115,6 +1119,7 @@ export function useInvoice() {
 					coupon_code: couponCode.value,
 					is_pos: 1,
 					update_stock: 1, // Critical: Ensures stock is updated
+					...toRaw(invoiceExtras.value),
 				};
 
 				// "Pay on Receivable Account": route the invoice's debit_to to a chosen AR
@@ -1393,6 +1398,7 @@ export function useInvoice() {
 		taxInclusive,
 		itemTaxTemplates,
 		isSubmitting,
+		invoiceExtras,
 
 		// Computed
 		subtotal,

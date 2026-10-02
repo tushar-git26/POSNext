@@ -92,6 +92,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		taxInclusive,
 		itemTaxTemplates,
 		isSubmitting,
+		invoiceExtras,
 		addItem: addItemToInvoice,
 		removeItem,
 		updateItemQuantity: baseUpdateItemQuantity,
@@ -1854,6 +1855,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 	);
 
 	return {
+		invoiceExtras,
 		// State
 		invoiceItems,
 		customer,

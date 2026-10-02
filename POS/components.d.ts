@@ -43,6 +43,7 @@ declare module 'vue' {
     POSSettings: typeof import('./src/components/settings/POSSettings.vue')['default']
     PromotionManagement: typeof import('./src/components/sale/PromotionManagement.vue')['default']
     ReturnInvoiceDialog: typeof import('./src/components/sale/ReturnInvoiceDialog.vue')['default']
+    RfidTray: typeof import('./src/components/sale/RfidTray.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectField: typeof import('./src/components/settings/SelectField.vue')['default']
