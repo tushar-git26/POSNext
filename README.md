@@ -1,5 +1,8 @@
 # POS Next
 
+> **Fork note:** this branch adds RFID counter mode (with [rfid_retail](https://github.com/tushar-git26/rfid_retail)),
+> per-item GST, SKU display and price/print fixes. See [FORK_CHANGES.md](FORK_CHANGES.md).
+
 <div align="center">
 
 ![POS Next Banner](docs/screenshots/01-main-dashboard.png)
